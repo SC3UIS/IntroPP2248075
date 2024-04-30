@@ -1,4 +1,4 @@
-# 2248075-MPI
+# 2248076-2248075-MPI
 
 # ej 1
 
@@ -269,3 +269,174 @@ Key found at index 9
 *squeue: Este comando muestra una lista de trabajos actualmente en cola en el clúster. Muestra información como el ID del trabajo, la partición en la que se encuentra, el nombre del trabajo, el usuario que lo envió, el estado actual del trabajo, el tiempo transcurrido desde que se inició y la lista de nodos asignados (si está en ejecución). En este caso, muestra una lista de varios trabajos en ejecución o en cola en diferentes nodos del clúster.
 
 *cat binary_search_mpi_1_62870.out: Este comando muestra el contenido del archivo de salida (binary_search_mpi_1_62870.out) asociado al trabajo con el ID 62870. Presumiblemente, este archivo contiene la salida generada por el programa MPI binary_search_mpi_1 que se ejecutó como parte del trabajo enviado anteriormente. En este caso, muestra el mensaje "Key found at index 9", lo que indica que se encontró una clave en el índice 9 durante la ejecución del programa MPI.
+
+
+#ej 2
+
+```
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+
+#define MAX_SIZE 100
+
+void arrange(int, int);
+int array[MAX_SIZE], array1[MAX_SIZE];
+int i, j, temp, max, count, maxdigits = 0, c = 0;
+
+int main() {
+    int rank, size, t1, t2, k, t, n = 1;
+
+    MPI_Init(NULL, NULL);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    
+    if (rank == 0) {
+        int list[] = {2, 4, 70, 11, 10, 45, 50, 59, 60, 66, 69, 7, 79};
+        count = sizeof(list) / sizeof(list[0]);
+        for (i = 0; i < count; i++) {
+            array[i] = list[i];
+            array1[i] = array[i];
+        }
+        for (i = 0; i < count; i++) {
+            t = array[i];
+            while (t > 0) {
+                c++;
+                t = t / 10;
+            }
+            if (maxdigits < c)
+                maxdigits = c;
+            c = 0;
+        }
+        while (--maxdigits)
+            n = n * 10;
+    }
+
+    
+    MPI_Bcast(&count, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+   
+    int local_n = count / size;
+    int *local_array = malloc(local_n * sizeof(int));
+    int *local_array1 = malloc(local_n * sizeof(int));
+
+    MPI_Scatter(array, local_n, MPI_INT, local_array, local_n, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(array1, local_n, MPI_INT, local_array1, local_n, MPI_INT, 0, MPI_COMM_WORLD);
+
+
+    for (int i = 0; i < local_n; i++) {
+        for (int j = i + 1; j < local_n; j++) {
+            if (local_array1[i] > local_array1[j]) {
+               
+                temp = local_array1[i];
+                local_array1[i] = local_array1[j];
+                local_array1[j] = temp;
+
+                
+                temp = local_array[i];
+                local_array[i] = local_array[j];
+                local_array[j] = temp;
+            }
+        }
+    }
+
+    MPI_Gather(local_array, local_n, MPI_INT, array, local_n, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(local_array1, local_n, MPI_INT, array1, local_n, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        
+        for (int i = 0; i < count;) {
+            t1 = array[i] / n;
+            for (j = i + 1; j < count && (array[j] / n) == t1; j++);
+            arrange(i, j);
+            i = j;
+        }
+        printf("\nSorted Array (Postman sort) :");
+        for (i = 0; i < count; i++)
+            printf("%d ", array1[i]);
+        printf("\n");
+    }
+
+    free(local_array);
+    free(local_array1);
+    MPI_Finalize();
+    return 0;
+}
+
+void arrange(int k, int n) {
+    for (i = k; i < n - 1; i++) {
+        for (j = i + 1; j < n; j++) {
+            if (array1[i] > array1[j]) {
+                temp = array1[i];
+                array1[i] = array1[j];
+                array1[j] = temp;
+                temp = array[i] % 10;
+                array[i] = array[j] % 10;
+                array[j] = temp;
+            }
+        }
+    }
+}
+
+```
+
+Descripción del Código:
+Inclusión de Bibliotecas y Definiciones: El código incluye las bibliotecas estándar stdio.h y stdlib.h, además de mpi.h para funciones de MPI. Se define un tamaño máximo MAX_SIZE para los arreglos.
+Variables Globales: Se utilizan varios arreglos y variables para almacenamiento y control del flujo del algoritmo.
+Función main:
+Inicialización de MPI: Se inicia el entorno de MPI y se obtienen el rango (rank) del proceso actual y el tamaño total (size) del comunicador.
+Inicialización del Arreglo: El proceso con rango 0 (raíz) inicializa el arreglo con valores predefinidos y calcula el número máximo de dígitos (maxdigits) en los números más grandes para determinar la base de ordenación.
+Broadcasting: El tamaño del arreglo y la base de ordenación son transmitidos a todos los procesos.
+Distribución del Trabajo: Se calcula el número de elementos que cada proceso deberá ordenar y se distribuyen los arreglos array y array1 entre todos los procesos utilizando MPI_Scatter.
+Ordenamiento Local: Cada proceso realiza un ordenamiento local en su segmento del arreglo.
+Recolección de Resultados: Los arreglos ordenados localmente se recolectan de vuelta en el proceso raíz mediante MPI_Gather.
+Función arrange: Esta función realiza la ordenación final en el proceso raíz después de que todos los segmentos han sido recolectados. Se asegura que los segmentos estén completamente ordenados en base a los dígitos significativos restantes.
+Finalización de MPI: Se liberan los recursos y se finaliza el entorno de MPI.
+
+```
+[jcportillam@guane ~]$ mpicc postman_sort_mpi_1.c -o postman_sort_mpi_1
+[jcportillam@guane ~]$ nano run_postman_sort_mpi_1.sbatch
+[jcportillam@guane ~]$ sbatch run_postman_sort_mpi_1.sbatch
+
+```
+Archivo sbacht para ejecucion en guane:
+
+```
+
+
+#!/bin/bash
+#SBATCH --job-name=postman_sort_mpi_1
+#SBATCH --output=postman_sort_mpi_1_%j.out
+#SBATCH --error=postman_sort_mpi_1_%j.err
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=1
+#SBATCH --time=00:10:00
+#SBATCH --partition=normal
+
+mpirun -np 2 ./postman_sort_mpi_1
+
+
+
+
+```
+
+salida:
+
+```
+[jcportillam@guane ~]$ sbatch run_postman_sort_mpi_1.sbatch
+Submitted batch job 62881
+[jcportillam@guane ~]$ squeque
+-bash: squeque: command not found
+[jcportillam@guane ~]$ squeue
+     JOBID       PARTITION         NAME       USER  ST         TIME NODE NODELIST(REASON)
+     62871            GIRG          SPH  lmbecerra  PD         0:00    1 (QOSMaxNodePerUserLimit)
+     61965          normal     carefopt wacontrera   R  50-20:04:19    1 guane11
+     61984          normal    zpmrefopt wacontrera   R  50-01:30:26    1 guane12
+     62717             Viz inversion_wi amartinezm   R     15:40:04    1 yaje
+     62865            GIRG          SPH  lmbecerra   R     15:38:41    1 thor
+[jcportillam@guane ~]$ cat postman_sort_mpi_1_62881.out
+
+Sorted Array (Postman sort) :2 4 7 10 11 45 50 59 60 66 69 70 79
+```
