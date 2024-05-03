@@ -92,9 +92,10 @@ En la que tenemos el siguiente par de funciones:
 void binary_search(int [], int, int, int);
 void bubble_sort(int [], int);
 
-int main()
-{
+int main() {
     int key, size, i;
+    double start_time, end_time;
+
     int list[] = {2, 4, 7, 10, 11, 45, 50, 59, 60, 66, 69, 70, 79};
     size = sizeof(list) / sizeof(list[0]);
 
@@ -103,21 +104,30 @@ int main()
     key = 66; // Definimos la clave directamente aquí
 
     MPI_Init(NULL, NULL);
-    binary_search(list, 0, size, key);
-    MPI_Finalize();
 
+    // Obtener el tiempo de inicio
+    start_time = MPI_Wtime();
+
+    binary_search(list, 0, size, key);
+
+    // Obtener el tiempo de finalización
+    end_time = MPI_Wtime();
+
+    // Calcular el tiempo transcurrido
+    double elapsed_time = end_time - start_time;
+
+    // Imprimir el tiempo transcurrido
+    printf("Tiempo de ejecución: %f segundos\n", elapsed_time);
+
+    MPI_Finalize();
     return 0;
 }
 
-void bubble_sort(int list[], int size)
-{
+void bubble_sort(int list[], int size) {
     int temp, i, j;
-    for (i = 0; i < size; i++)
-    {
-        for (j = i; j < size; j++)
-        {
-            if (list[i] > list[j])
-            {
+    for (i = 0; i < size; i++) {
+        for (j = i; j < size; j++) {
+            if (list[i] > list[j]) {
                 temp = list[i];
                 list[i] = list[j];
                 list[j] = temp;
@@ -126,35 +136,32 @@ void bubble_sort(int list[], int size)
     }
 }
 
-void binary_search(int list[], int lo, int hi, int key)
-{
+void binary_search(int list[], int lo, int hi, int key) {
     int mid;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (lo > hi)
-    {
+    if (lo > hi) {
         if (rank == 0) {
             printf("Key not found\n");
         }
         return;
     }
+
     mid = (lo + hi) / 2;
-    if (list[mid] == key)
-    {
+    if (list[mid] == key) {
         if (rank == 0) {
             printf("Key found at index %d\n", mid);
         }
     }
-    else if (list[mid] > key)
-    {
+    else if (list[mid] > key) {
         binary_search(list, lo, mid - 1, key);
     }
-    else if (list[mid] < key)
-    {
+    else if (list[mid] < key) {
         binary_search(list, mid + 1, hi, key);
     }
 }
+
 ```
 
 En esta adaptación del código original a MPI, se han realizado los siguientes cambios:
@@ -247,28 +254,56 @@ Aquí está el desglose de lo que hace este script:
 5.Ejecución en el Clúster: Usaremos sbatch para enviar el script .sbatch al clúster y ejecutar el programa.
 
 ```
-[jcportillam@guane ~]$ nano run_binary_search_mpi_1.sbatch
 [jcportillam@guane ~]$ sbatch run_binary_search_mpi_1.sbatch
-Submitted batch job 62870
+Submitted batch job 62950
 [jcportillam@guane ~]$ squeue
      JOBID       PARTITION         NAME       USER  ST         TIME NODE NODELIST(REASON)
-     61965          normal     carefopt wacontrera   R  48-18:14:22    1 guane11
-     61966          normal    iftrefopt wacontrera   R  48-17:08:29    1 guane11
-     61983          normal    zporefopt wacontrera   R  48-00:10:27    1 guane11
-     61984          normal    zpmrefopt wacontrera   R  47-23:40:29    1 guane12
-     62717             Viz inversion_wi amartinezm   R   4-18:58:40    1 yaje
-     62864          normal    neb_ts_c5 ccquijanoc   R     20:12:23    1 guane10
-     62865            GIRG          SPH  lmbecerra   R        31:09    1 thor
-[jcportillam@guane ~]$ cat binary_search_mpi_1_62870.out
+     62910            GIRG          SPH  lmbecerra  PD         0:00    1 (QOSMaxNodePerUserLimit)
+     62949          normal    sp_ts_97X ccquijanoc  PD         0:00    1 (Resources)
+     62950          normal binary_searc jcportilla  PD         0:00    2 (Priority)
+     61965          normal     carefopt wacontrera   R  53-04:40:49    1 guane11
+     61984          normal    zpmrefopt wacontrera   R  52-10:06:56    1 guane12
+     62717             Viz inversion_wi amartinezm   R   3-00:16:34    1 yaje
+     62891          normal    neb_ts_c5 ccquijanoc   R   1-03:06:59    1 guane10
+     62909            GIRG          SPH  lmbecerra   R     13:58:34    1 thor
+     62947          normal   sp_ts_pbe0 ccquijanoc   R        26:54    1 guane14
+     62948          normal   sp_ts_b97m ccquijanoc   R        14:39    1 guane13
+[jcportillam@guane ~]$ cat binary_search_mpi_1_62950.out
 Key found at index 9
+Tiempo de ejecución: 0.000045 segundos
+Tiempo de ejecución: 0.000006 segundos
+[jcportillam@guane ~]$ cat binary_search_mpi_1_62950.err
+--------------------------------------------------------------------------
+By default, for Open MPI 4.0 and later, infiniband ports on a device
+are not used by default.  The intent is to use UCX for these devices.
+You can override this policy by setting the btl_openib_allow_ib MCA parameter
+to true.
+
+  Local host:              guane12
+  Local adapter:           mlx4_0
+  Local port:              1
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+WARNING: There was an error initializing an OpenFabrics device.
+
+  Local host:   guane12
+  Local device: mlx4_0
+--------------------------------------------------------------------------
+[guane11.uis.edu.co:09346] 1 more process has sent help message help-mpi-btl-openib.txt / ib port not selected
+[guane11.uis.edu.co:09346] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[guane11.uis.edu.co:09346] 1 more process has sent help message help-mpi-btl-openib.txt / error in device init
+
 ```
-*nano run_binary_search_mpi_1.sbatch: Este comando abre el editor de texto nano y crea/edita un archivo llamado run_binary_search_mpi_1.sbatch. Presumiblemente, este archivo es un script de lote (batch script) Slurm, similar al que se explicó anteriormente, que describe el trabajo que se enviará al clúster.
+*He enviado un trabajo con el comando sbatch run_binary_search_mpi_1.sbatch, que utiliza el script run_binary_search_mpi_1.sbatch para definir los parámetros de ejecución.
 
-*sbatch run_binary_search_mpi_1.sbatch: Este comando envía el trabajo descrito en el archivo run_binary_search_mpi_1.sbatch al sistema de gestión de trabajos Slurm para su ejecución. sbatch es el comando utilizado para enviar trabajos al clúster. Después de enviar el trabajo, Slurm devuelve un número de identificación de trabajo (JOBID) que se utiliza para hacer referencia al trabajo en futuras interacciones con Slurm.
+*El gestor de colas Slurm me ha proporcionado el ID del trabajo: 62950, que puedo usar para realizar un seguimiento del progreso del trabajo.
 
-*squeue: Este comando muestra una lista de trabajos actualmente en cola en el clúster. Muestra información como el ID del trabajo, la partición en la que se encuentra, el nombre del trabajo, el usuario que lo envió, el estado actual del trabajo, el tiempo transcurrido desde que se inició y la lista de nodos asignados (si está en ejecución). En este caso, muestra una lista de varios trabajos en ejecución o en cola en diferentes nodos del clúster.
+*Al ejecutar squeue, puedo ver todos los trabajos en la cola. Mi trabajo con el ID 62950 aparece como "binary_searc" y está pendiente de ejecución.
 
-*cat binary_search_mpi_1_62870.out: Este comando muestra el contenido del archivo de salida (binary_search_mpi_1_62870.out) asociado al trabajo con el ID 62870. Presumiblemente, este archivo contiene la salida generada por el programa MPI binary_search_mpi_1 que se ejecutó como parte del trabajo enviado anteriormente. En este caso, muestra el mensaje "Key found at index 9", lo que indica que se encontró una clave en el índice 9 durante la ejecución del programa MPI.
+*Al usar cat binary_search_mpi_1_62950.out, puedo ver el resultado de la ejecución del programa. Encontró la clave en el índice 9 y también muestra el tiempo de ejecución, que fue de 0.000045 segundos. Además, parece que hay otra línea que muestra un tiempo de ejecución aún más corto, 0.000006 segundos. Es posible que esta última línea sea un duplicado accidental o que se haya producido un error en la generación del archivo de salida.
+
+*El archivo binary_search_mpi_1_62950.err muestra algunas advertencias relacionadas con la inicialización de dispositivos OpenFabrics, pero el programa se ejecutó sin errores graves. Estas advertencias son comunes y pueden ser ignoradas si el programa se ejecuta correctamente.
 
 
 #ej 2
