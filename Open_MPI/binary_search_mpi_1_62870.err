@@ -15,6 +15,6 @@ WARNING: There was an error initializing an OpenFabrics device.
   Local host:   guane12
   Local device: mlx4_0
 --------------------------------------------------------------------------
-[guane11.uis.edu.co:29786] 1 more process has sent help message help-mpi-btl-openib.txt / ib port not selected
-[guane11.uis.edu.co:29786] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
-[guane11.uis.edu.co:29786] 1 more process has sent help message help-mpi-btl-openib.txt / error in device init
+[guane11.uis.edu.co:09346] 1 more process has sent help message help-mpi-btl-openib.txt / ib port not selected
+[guane11.uis.edu.co:09346] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[guane11.uis.edu.co:09346] 1 more process has sent help message help-mpi-btl-openib.txt / error in device init
