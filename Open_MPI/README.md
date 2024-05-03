@@ -321,14 +321,17 @@ int i, j, temp, max, count, maxdigits = 0, c = 0;
 
 int main() {
     int rank, size, t1, t2, k, t, n = 1;
+    double start_time, end_time; // Variables para almacenar los tiempos de inicio y fin
 
     MPI_Init(NULL, NULL);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    
+    // Medir el tiempo de inicio
+    start_time = MPI_Wtime();
+
     if (rank == 0) {
-        int list[] = {2, 4, 70, 11, 10, 45, 50, 59, 60, 66, 69, 7, 79};
+        int list[] = {2, 4, 7, 10, 11, 45, 50, 59, 60, 66, 69, 70, 79};
         count = sizeof(list) / sizeof(list[0]);
         for (i = 0; i < count; i++) {
             array[i] = list[i];
@@ -348,11 +351,9 @@ int main() {
             n = n * 10;
     }
 
-    
     MPI_Bcast(&count, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-   
     int local_n = count / size;
     int *local_array = malloc(local_n * sizeof(int));
     int *local_array1 = malloc(local_n * sizeof(int));
@@ -360,16 +361,12 @@ int main() {
     MPI_Scatter(array, local_n, MPI_INT, local_array, local_n, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Scatter(array1, local_n, MPI_INT, local_array1, local_n, MPI_INT, 0, MPI_COMM_WORLD);
 
-
     for (int i = 0; i < local_n; i++) {
         for (int j = i + 1; j < local_n; j++) {
             if (local_array1[i] > local_array1[j]) {
-               
                 temp = local_array1[i];
                 local_array1[i] = local_array1[j];
                 local_array1[j] = temp;
-
-                
                 temp = local_array[i];
                 local_array[i] = local_array[j];
                 local_array[j] = temp;
@@ -381,7 +378,6 @@ int main() {
     MPI_Gather(local_array1, local_n, MPI_INT, array1, local_n, MPI_INT, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        
         for (int i = 0; i < count;) {
             t1 = array[i] / n;
             for (j = i + 1; j < count && (array[j] / n) == t1; j++);
@@ -396,6 +392,16 @@ int main() {
 
     free(local_array);
     free(local_array1);
+
+    // Medir el tiempo de fin
+    end_time = MPI_Wtime();
+
+    // Calcular el tiempo de ejecución
+    double execution_time = end_time - start_time;
+
+    // Imprimir el tiempo de ejecución
+    printf("Tiempo de ejecución: %.6f segundos\n", execution_time);
+
     MPI_Finalize();
     return 0;
 }
@@ -414,6 +420,7 @@ void arrange(int k, int n) {
         }
     }
 }
+
 
 ```
 
@@ -460,18 +467,45 @@ mpirun -np 2 ./postman_sort_mpi_1
 salida:
 
 ```
+[jcportillam@guane ~]$ nano postman_sort_mpi_1.c
+[jcportillam@guane ~]$ mpicc postman_sort_mpi_1.c -o postman_sort_mpi_1
 [jcportillam@guane ~]$ sbatch run_postman_sort_mpi_1.sbatch
-Submitted batch job 62881
-[jcportillam@guane ~]$ squeque
--bash: squeque: command not found
+Submitted batch job 62951
 [jcportillam@guane ~]$ squeue
      JOBID       PARTITION         NAME       USER  ST         TIME NODE NODELIST(REASON)
-     62871            GIRG          SPH  lmbecerra  PD         0:00    1 (QOSMaxNodePerUserLimit)
-     61965          normal     carefopt wacontrera   R  50-20:04:19    1 guane11
-     61984          normal    zpmrefopt wacontrera   R  50-01:30:26    1 guane12
-     62717             Viz inversion_wi amartinezm   R     15:40:04    1 yaje
-     62865            GIRG          SPH  lmbecerra   R     15:38:41    1 thor
-[jcportillam@guane ~]$ cat postman_sort_mpi_1_62881.out
+     62910            GIRG          SPH  lmbecerra  PD         0:00    1 (QOSMaxNodePerUserLimit)
+     61965          normal     carefopt wacontrera   R  53-05:04:31    1 guane11
+     61984          normal    zpmrefopt wacontrera   R  52-10:30:38    1 guane12
+     62717             Viz inversion_wi amartinezm   R   3-00:40:16    1 yaje
+     62891          normal    neb_ts_c5 ccquijanoc   R   1-03:30:41    1 guane10
+     62909            GIRG          SPH  lmbecerra   R     14:22:16    1 thor
+     62948          normal   sp_ts_b97m ccquijanoc   R        38:21    1 guane13
+     62949          normal    sp_ts_97X ccquijanoc   R        16:56    1 guane14
+[jcportillam@guane ~]$ cat postman_sort_mpi_1_62951.out
 
 Sorted Array (Postman sort) :2 4 7 10 11 45 50 59 60 66 69 70 79
+Tiempo de ejecución: 0.016061 segundos
+Tiempo de ejecución: 0.015683 segundos
+[jcportillam@guane ~]$ cat postman_sort_mpi_1_62951.err
+--------------------------------------------------------------------------
+By default, for Open MPI 4.0 and later, infiniband ports on a device
+are not used by default.  The intent is to use UCX for these devices.
+You can override this policy by setting the btl_openib_allow_ib MCA parameter
+to true.
+
+  Local host:              guane12
+  Local adapter:           mlx4_0
+  Local port:              1
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+WARNING: There was an error initializing an OpenFabrics device.
+
+  Local host:   guane12
+  Local device: mlx4_0
+--------------------------------------------------------------------------
+[guane11.uis.edu.co:09523] 1 more process has sent help message help-mpi-btl-openib.txt / ib port not selected
+[guane11.uis.edu.co:09523] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[guane11.uis.edu.co:09523] 1 more process has sent help message help-mpi-btl-openib.txt / error in device init
+
 ```
